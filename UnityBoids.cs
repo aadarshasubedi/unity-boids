@@ -1,4 +1,3 @@
-// teste de edicao
 // Path Following
 // Daniel Shiffman <http://www.shiffman.net>
 // The Nature of Code, Spring 2009
@@ -11,46 +10,45 @@ using System.Collections.Generic;
 public class UnityBoids : MonoBehaviour
 {
     // All the usual stuff
-    private Vector2 loc;
-    private Vector2 vel;
-    private Vector2 acc;
+    public Vector3 loc;
+    public Vector3 vel;
+    public Vector3 acc;
     private float wandertheta;
+
 
     public float r;
     public float maxforce;    // Maximum steering force
     public float maxspeed;    // Maximum speed
     public bool debug;
-    public Vector2 target, dir;
+    public Vector3 target, dir;
 
-    private GameObject[] totalBoids;
+    //private GameObject[] totalBoids;
+    private UnityBoids[] totalBoids;
 
     // Constructor initialize all values
 
     void Awake()
     {
-        UpdateTotalBoids();
+        //UpdateTotalBoids();
+        r = 1;
+        maxspeed = 0.1f;
+        maxforce = 0.01f;
+        acc = new Vector3(0, 0);
+        vel = new Vector3(maxspeed, 1, 1);
     }
 
-    public void Initialize(Vector2 l, float ms, float mf)
-    {
-        loc = l;
-        r = 4;
-        maxspeed = ms;
-        maxforce = mf;
-        acc = new Vector2(0, 0);
-        vel = new Vector2(maxspeed, 0);
-    }
+
 
     // A function to deal with path following and separation
-    public void applyForces(GameObject[] boids, Path path)
+    public void applyForces(Path path)
     {
         // Follow path force
-        Vector2 f = follow(path);
+        Vector3 f = follow(path);
         // Separate from other boids force
-        Vector2 s = separate();
+        Vector3 s = separate();
         // Arbitrary weighting
         f *= 3;
-        s *= 1;
+        s *= 2;
         // Accumulate in acceleration
         acc += f;
         acc += s;
@@ -60,9 +58,9 @@ public class UnityBoids : MonoBehaviour
     // We accumulate a new acceleration each time based on three rules
     public void flock()
     {
-        Vector2 sep = separate();   // Separation
-        Vector2 ali = align();      // Alignment
-        Vector2 coh = cohesion();   // Cohesion
+        Vector3 sep = separate();   // Separation
+        Vector3 ali = align();      // Alignment
+        Vector3 coh = cohesion();   // Cohesion
         // Arbitrarily weight these forces
         sep *= (1.5f);
         ali *= (1.0f);
@@ -76,14 +74,15 @@ public class UnityBoids : MonoBehaviour
 
     // This function implements Craig Reynolds' path following algorithm
     // http://www.red3d.com/cwr/steer/PathFollow.html
-    public Vector2 follow(Path p)
+
+    public Vector3 follow(Path p)
     {
 
         // Predict location 25 (arbitrary choice) frames ahead
-        Vector2 predict = vel;
+        Vector3 predict = vel;
         predict.Normalize();
         predict *= 25;
-        Vector2 predictLoc = loc + predict;
+        Vector3 predictLoc = loc + predict;
 
         // Now we must find the normal to the path from the predicted location
         // We look at the normal for each line segment and pick out the closest one
@@ -92,32 +91,32 @@ public class UnityBoids : MonoBehaviour
         float record = 1000000;  // Start with a very high record distance that can easily be beaten
 
         // Loop through all points of the path
-        for (int i = 0; i < p.points.Count; i++)
+        for (int i = 0; i < p.points.Length; i++)
         {
 
             // Look at a line segment
-            Vector2 a = (Vector2)p.points[i];
-            Vector2 b = (Vector2)p.points[(i + 1) % p.points.Count];  // Path wraps around
+            Vector3 a = (Vector3)p.points[i];
+            Vector3 b = (Vector3)p.points[(i + 1) % p.points.Length];  // Path wraps around
 
             // Get the normal point to that line
-            Vector2 normal = getNormalPoint(predictLoc, a, b);
+            Vector3 normal = getNormalPoint(predictLoc, a, b);
 
             // Check if normal is on line segment
-            float da = Vector2.Distance(normal, a);
-            float db = Vector2.Distance(normal, b);
-            Vector2 line = b - a;
+            float da = Vector3.Distance(normal, a);
+            float db = Vector3.Distance(normal, b);
+            Vector3 line = b - a;
             // If it's not within the line segment, consider the normal to just be the end of the line segment (point b)
             if (da + db > line.magnitude + 1)
             {
                 normal = b;
                 // If we're at the end we really want the next line segment for looking ahead
-                a = (Vector2)p.points[(i + 1) % p.points.Count];
-                b = (Vector2)p.points[(i + 2) % p.points.Count];  // Path wraps around
+                a = (Vector3)p.points[(i + 1) % p.points.Length];
+                b = (Vector3)p.points[(i + 2) % p.points.Length];  // Path wraps around
                 line = b - a;
             }
 
             // How far away are we from the path?
-            float d = Vector2.Distance(predictLoc, normal);
+            float d = Vector3.Distance(predictLoc, normal);
             // Did we beat the record and find the closest line segment?
             if (d < record)
             {
@@ -142,43 +141,43 @@ public class UnityBoids : MonoBehaviour
         }
         else
         {
-            return new Vector2(0, 0);
+            return new Vector3(0, 0);
         }
     }
 
     // A function to get the normal point from a point (p) to a line segment (a-b)
     // This function could be optimized to make fewer new Vector objects
-    Vector2 getNormalPoint(Vector2 p, Vector2 a, Vector2 b)
+    Vector3 getNormalPoint(Vector3 p, Vector3 a, Vector3 b)
     {
         // Vector from a to p
-        Vector2 ap = p - a;
+        Vector3 ap = p - a;
         // Vector from a to b
-        Vector2 ab = b - a;
+        Vector3 ab = b - a;
         ab.Normalize(); // Normalize the line
         // Project vector "diff" onto line by using the dot product
 
-        ab *= (Vector2.Dot(ap, ab));
-        Vector2 normalPoint = a + ab;
+        ab *= (Vector3.Dot(ap, ab));
+        Vector3 normalPoint = a + ab;
         return normalPoint;
     }
 
     // Separation
     // Method checks for nearby boids and steers away
-    Vector2 separate()
+    Vector3 separate()
     {
         float desiredseparation = r * 2;
-        Vector2 steer = new Vector2(0, 0);
+        Vector3 steer = new Vector3(0, 0, 0);
         int count = 0;
         // For every boid in the system, check if it's too close
         for (int i = 0; i < totalBoids.Length; i++)
         {
-            float d = Vector2.Distance(loc, (totalBoids[i].GetComponent(typeof(Boid)) as Boid).loc);
+            float d = Vector3.Distance(loc, totalBoids[i].loc);
 
             // If the distance is greater than 0 and less than an arbitrary amount (0 when you are yourself)
             if ((d > 0) && (d < desiredseparation))
             {
                 // Calculate vector pointing away from neighbor
-                Vector2 diff = loc - (((GameObject)totalBoids[i]).GetComponent(typeof(Boid)) as Boid).loc;
+                Vector3 diff = loc - totalBoids[i].loc;
                 diff.Normalize();
                 diff /= d;        // Weight by distance
                 steer += diff;
@@ -199,24 +198,24 @@ public class UnityBoids : MonoBehaviour
             steer *= maxspeed;
             steer -= vel;
             //steer.limit(maxforce);
-            steer = Vector2.ClampMagnitude(steer, maxforce);
+            steer = Vector3.ClampMagnitude(steer, maxforce);
         }
         return steer;
     }
 
 
-    Vector2 align()
+    Vector3 align()
     {
         float neighbordist = 50.0f;
-        Vector2 steer = new Vector2(0, 0);
+        Vector3 steer = new Vector3(0, 0, 0);
         int count = 0;
         for (int i = 0; i < totalBoids.Length; i++)
         {
 
-            float d = Vector2.Distance(loc, (((GameObject)totalBoids[i]).GetComponent(typeof(Boid)) as Boid).loc);
+            float d = Vector3.Distance(loc, totalBoids[i].loc);
             if ((d > 0) && (d < neighbordist))
             {
-                steer += ((((GameObject)totalBoids[i]).GetComponent(typeof(Boid)) as Boid).vel);
+                steer += totalBoids[i].vel;
                 count++;
             }
         }
@@ -232,7 +231,7 @@ public class UnityBoids : MonoBehaviour
             steer.Normalize();
             steer *= (maxspeed);
             steer -= (vel);
-            steer = Vector2.ClampMagnitude(steer, maxforce);
+            steer = Vector3.ClampMagnitude(steer, maxforce);
         }
         return steer;
     }
@@ -240,15 +239,15 @@ public class UnityBoids : MonoBehaviour
 
     // Cohesion
     // For the average location (i.e. center) of all nearby boids, calculate steering vector towards that location
-    Vector2 cohesion()
+    Vector3 cohesion()
     {
         float neighbordist = 50.0f;
-        Vector2 sum = new Vector2(0, 0);   // Start with empty vector to accumulate all locations
+        Vector3 sum = new Vector3(0, 0, 0);   // Start with empty vector to accumulate all locations
         int count = 0;
         for (int i = 0; i < totalBoids.Length; i++)
         {
-            Boid other = (((GameObject)totalBoids[i]).GetComponent(typeof(Boid)) as Boid);
-            float d = Vector2.Distance(loc, other.loc);
+            UnityBoids other = totalBoids[i];
+            float d = Vector3.Distance(loc, other.loc);
             if ((d > 0) && (d < neighbordist))
             {
                 sum += (other.loc); // Add location
@@ -264,49 +263,52 @@ public class UnityBoids : MonoBehaviour
     }
 
     // Method to update location
-    void Update()
+
+    public void Update()
     {
-        
+
         // Update velocity
-        vel += acc;
+        // Debug.Log(acc.x + "-" + accOld.x);
+        //this.transform.rotation = Quaternion.FromToRotation(acc/1000,acc*1000);
+
+        vel += acc * (Time.deltaTime * 2);
+
         // Limit speed
         //vel.limit(maxspeed);
-        vel = Vector2.ClampMagnitude(vel, maxspeed);
+        vel = Vector3.ClampMagnitude(vel, maxspeed);
         loc += vel;
         // Reset accelertion to 0 each cycle
+
         acc *= 0;
 
+        if (vel.magnitude != 0)
+        {
+            float rotateY = Mathf.Atan2(-vel.z, vel.x) * Mathf.Rad2Deg;
+            float rotateZ = Mathf.Asin(vel.y / vel.magnitude) * Mathf.Rad2Deg;
+            this.transform.rotation = Quaternion.Euler(0, rotateY, rotateZ);
+        }
+
         //flock();
+        // borders();
+        //UpdateTotalBoids();
+        this.gameObject.transform.position = new Vector3(loc.x, loc.y, loc.z);
 
-        //borders();
-
-        //this.gameObject.transform.position = new Vector3(loc.x, 0, loc.y);
-        //Debug.Log(new Vector3(loc.x, 0, loc.y));
-
-        //this.gameObject.transform.position = new Vector3(Mathf.Sin(Time.time), Mathf.Cos(Time.time));
-        this.gameObject.transform.position = new Vector3(loc.x,0,loc.y);
-
-        //float theta = heading2D(vel) + (Mathf.Deg2Rad * 90f);
-        //float theta = heading2D(vel);
-        //Debug.Log(Mathf.Rad2Deg * theta);
-        //Debug.Log((Mathf.Deg2Rad * 90f));
-        //Debug.Log(Direction(new Vector2(0,0),vel));
 
     }
 
-    Vector2 Direction(Vector2 from ,Vector2 to)
+    Vector3 Direction(Vector3 from, Vector3 to)
     {
-        Vector2 retorno = to - from;
+        Vector3 retorno = to - from;
         return retorno.normalized;
     }
 
 
     // A method that calculates a steering vector towards a target
     // Takes a second argument, if true, it slows down as it approaches the target
-    Vector2 steer(Vector2 target, bool slowdown)
+    Vector3 steer(Vector3 target, bool slowdown)
     {
-        Vector2 steer;  // The steering vector
-        Vector2 desired = target - loc;  // A vector pointing from the location to the target
+        Vector3 steer;  // The steering vector
+        Vector3 desired = target - loc;  // A vector pointing from the location to the target
         float d = desired.magnitude; // Distance from the target is the magnitude of the vector
         // If the distance is greater than 0, calc steering (otherwise return zero vector)
         if (d > 0)
@@ -320,49 +322,52 @@ public class UnityBoids : MonoBehaviour
             steer = desired - vel;
 
             //steer.limit(maxforce);  // Limit to maximum steering force
-            steer = Vector2.ClampMagnitude(steer, maxforce);
+            steer = Vector3.ClampMagnitude(steer, maxforce);
         }
         else
         {
-            steer = new Vector2(0, 0);
+            steer = new Vector3(0, 0);
         }
         return steer;
     }
 
 
     //**********************************************************************
-    public void seek(Vector2 target)
+    public void seek(Vector3 target)
     {
         acc += (steer(target, false));
     }
 
-    public void arrive(Vector2 target)
+    public void arrive(Vector3 target)
     {
         acc += (steer(target, true));
     }
 
     public void wander()
     {
-        float wanderR = 16.0f;         // Radius for our "wander circle"
-        float wanderD = 60.0f;         // Distance for our "wander circle"
+        //float wanderR = 16.0f;         // Radius for our "wander circle"
+        //float wanderD = 60.0f;         // Distance for our "wander circle"
+        //float change = 0.25f;
+        float wanderR = 16f;         // Radius for our "wander circle"
+        float wanderD = 60f;         // Distance for our "wander circle"
         float change = 0.25f;
         wandertheta += Random.Range(-change, change);     // Randomly change wander theta
 
         // Now we have to calculate the new location to steer towards on the wander circle
-        Vector2 circleloc = vel;  // Start with velocity
+        Vector3 circleloc = vel;  // Start with velocity
         circleloc.Normalize();            // Normalize to get heading
         circleloc *= (wanderD);          // Multiply by distance
         circleloc += (loc);               // Make it relative to boid's location
 
-        Vector2 circleOffSet = new Vector2(wanderR * Mathf.Cos(wandertheta), wanderR * Mathf.Sin(wandertheta));
-        Vector2 target = (circleloc + circleOffSet);
+        Vector3 circleOffSet = new Vector3(wanderR * Mathf.Cos(wandertheta), wanderR * Mathf.Sin(wandertheta));
+        Vector3 target = (circleloc + circleOffSet);
         acc += (steer(target, false));  // Steer towards it
 
         // Render wandering circle, etc. 
         //if (debug) drawWanderStuff(loc, circleloc, target, wanderR);
 
-        Vector2 sep = separate();   // Separation
-        Vector2 coh = cohesion();   // Cohesion
+        Vector3 sep = separate();   // Separation
+        Vector3 coh = cohesion();   // Cohesion
         // Arbitrarily weight these forces
         sep *= (1.5f);
         coh *= (1.0f);
@@ -376,33 +381,73 @@ public class UnityBoids : MonoBehaviour
     // Wraparound
     public void borders()
     {
-        if (loc.x < -50) acc.x = acc.x + 0.01f;
-        if (loc.x > 50) acc.x = acc.x - 0.01f;
 
-        if (loc.y < -50) acc.y = acc.y + 0.01f;
-        if (loc.y > 50) acc.y = acc.y - 0.01f;
+        if (loc.x < -50) vel.x += maxforce / 2;
+        if (loc.x > 50) vel.x -= maxforce / 2;
 
-        //if (loc.x < -r) loc.x = width + r;    
-        //if (loc.y < -r) loc.y = height+r;     
-        //if (loc.x > width + r) loc.x = -r;    
-        //if (loc.y > height+r) loc.y = -r;     
+        if (loc.y < -50) vel.y += maxforce / 2;
+        if (loc.y > 50) vel.y -= maxforce / 2;
+
+        if (loc.z < -50) vel.z += maxforce / 2;
+        if (loc.z > 50) vel.z -= maxforce / 2;
+
+        /*
+                if (loc.x < -20) acc.x = acc.x + maxforce;
+                if (loc.x > 20) acc.x = acc.x - maxforce;
+
+                if (loc.y < -20) acc.y = acc.y + maxforce;
+                if (loc.y > 20) acc.y = acc.y - maxforce;
+
+                if (loc.z < -20) acc.z = acc.z + maxforce;
+                if (loc.z > 20) acc.z = acc.z - maxforce;
+         */
     }
 
     //**************************************
 
-    public void UpdateTotalBoids()
+    public void UpdateTotalBoids(UnityBoids[] total)
     {
-        totalBoids = new GameObject[GameObject.FindGameObjectsWithTag("Boid").Length];
-        totalBoids = GameObject.FindGameObjectsWithTag("Boid");
+        totalBoids = total;
+        //totalBoids = GameObject.FindObjectsOfType(typeof(UnityBoids)) as UnityBoids[];
+        //totalBoids = (totalBoids[])GameObject.FindObjectsOfType(typeof(UnityBoids)).to;
     }
 
     void OnDrawGizmos()
     {
         //Debug.Log("----------------------------");
-         Gizmos.DrawWireSphere(new Vector3(loc.x, 0, loc.y), r);
-         //Debug.Log(vel);
+        Gizmos.color = new Color(0.3f, 0.3f, 1.3f, 0.2f);
+        Gizmos.DrawWireSphere(this.transform.position, r);
 
     }
 
+    public class Path
+    {
+        public Vector3[] points;
+        public float radius;
+
+        public Path() {
+            points = new Vector3[0];
+            radius = 0f;
+        }
+
+        public void AddPoint(Vector3 point)
+        {
+            if (points.Length > 0)
+            {
+                Vector3[] pointsOld = points;
+                points = new Vector3[pointsOld.Length + 1];
+                pointsOld.CopyTo(points, 0);
+                points[points.Length - 1] = point;
+            }
+            else
+            {
+                points = new Vector3[1];
+                points[0] = point;
+            }
+
+            //temp_points.co
+            Debug.Log(points.Length);
+        }
+    };
 
 }
