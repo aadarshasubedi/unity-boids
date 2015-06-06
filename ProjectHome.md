@@ -1,0 +1,1 @@
+Simple boid class adaptation to Unity3D from Craig Reynolds and Daniel Shiffman's work.
